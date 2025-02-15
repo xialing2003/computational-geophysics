@@ -7,7 +7,7 @@ int main()
 {
     int L = 100, rho = 1, c1 = 1, k1 = 1, c2 = 2, k2 = 4;
     double dx = 0.1, dt = 0.05;
-    int si = L/dx, bi = 60/dx, sn = 500;
+    int si = L/dx, bi = 60/dx, sn = 2000;
 
     // Second Order System
     double u[sn + 1][si + 1], v2[sn + 1][si + 1]; //u_tn_xi

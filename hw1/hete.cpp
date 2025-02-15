@@ -34,6 +34,34 @@ int main()
         v2[sn][i] = (u[sn][i] - u[sn - 1][i]) / dt;
     }
 
+    //improved First Order System
+    double u_im[sn + 1][si + 1], v2_im[sn + 1][si + 1]; //u_tn_xi
+    for(int i = 0; i <= si; i++){
+        u_im[0][i] = exp(-0.1*pow(dx*i-50, 2));
+        u_im[1][i] = exp(-0.1*pow(dx*i-50, 2));
+    }
+    for(int n = 1; n < sn; n++){
+        u_im[n+1][0] = 0;
+        for(int i = 1; i < bi; i++){
+            u_im[n+1][i] = pow(c1*dt/dx, 2) * (u_im[n][i+1] - 2*u_im[n][i] + u_im[n][i-1]) + 2*u_im[n][i] - u_im[n-1][i];
+        }
+        u_im[n+1][bi] = pow(c2*dt/dx, 2) * (u_im[n][bi+1] - 2*u_im[n][bi] + u_im[n][bi-1]) + \
+                        pow(dt/dx, 2) * (k2 - k1)/(2*rho) * (u_im[n][bi+1] - u_im[n][bi-1]) + \
+                        2*u_im[n][bi] - u_im[n-1][bi];
+        for(int i = bi + 1; i <= si; i++){
+            u_im[n+1][i] = pow(c2*dt/dx, 2) * (u_im[n][i+1] - 2*u_im[n][i] + u_im[n][i-1]) + 2*u_im[n][i] - u_im[n-1][i];
+        }
+        u_im[n+1][si] = u_im[n+1][si - 1];
+    }
+
+    for(int i = 0; i <= si; i++){
+        v2_im[0][i] = 0;
+        for(int n = 1; n < sn; n++){
+            v2_im[n][i] = (u_im[n+1][i] - u_im[n-1][i]) / (2 * dt);
+        }
+        v2_im[sn][i] = (u_im[sn][i] - u_im[sn - 1][i]) / dt;
+    }
+
     // First Order System
     double u0[si + 1], v1[sn + 1][si + 1], T[sn + 1][si + 1];
     for(int i = 0; i <= si; i++){
@@ -82,14 +110,15 @@ int main()
     H5::DataSpace dataspace1(2, dims1);
 
     const char* dataset_names[] = {
-        "2order_u", "2order_v", "1order_v","1order_T"
+        "2order_u", "2order_v", "1order_v","1order_T", 
+        "2order_u_improve", "2order_v_improve"
     };
 
     double* dataset_data[] = {
-        &u[0][0], &v2[0][0], &v1[0][0], &T[0][0]
+        &u[0][0], &v2[0][0], &v1[0][0], &T[0][0], &u_im[0][0], &v2_im[0][0]
     };
 
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 6; ++i) {
         H5::DataSet dataset = file.createDataSet(dataset_names[i], H5::PredType::NATIVE_DOUBLE, dataspace1);
         dataset.write(dataset_data[i], H5::PredType::NATIVE_DOUBLE);
     }

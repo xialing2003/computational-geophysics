@@ -53,7 +53,8 @@ if __name__ == "__main__":
         v2 = f["2order_v"][:]
         v1 = f["1order_v"][:]
         T = f["1order_T"][:]
-    
-    print(u.shape)
+        u_im = f["2order_u_improve"][:]
+        v2_im = f["2order_v_improve"][:]
 
     plot(u, v1, v2, T, 'hete', 20, 100, 0.05)
+    plot(u_im, v1, v2_im, T, 'hete_improve', 20, 100, 0.05)

@@ -1,5 +1,5 @@
 ! number of spectral elements
-				  integer, parameter :: NSPEC = 11
+				  integer, parameter :: NSPEC = 12
 
 ! number of GLL points (polynomial degree plus one)
 				  integer, parameter :: NGLL = 7

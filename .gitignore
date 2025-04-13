@@ -2,3 +2,5 @@
 *.h5
 *.pdf
 *.out
+hw7/results/*
+hw8/hw8/results/*

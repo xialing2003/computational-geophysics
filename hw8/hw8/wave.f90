@@ -18,7 +18,7 @@
   double precision, parameter :: DENSITY = 1
   double precision, parameter :: SHEARMODULUS = 1
 
-  integer ispec,i,j,iglob,itime
+  integer ispec,i,j,iglob,itime, gamma,jglob
 
 ! Gauss-Lobatto-Legendre points of integration
   double precision, dimension(NGLL) :: xigll
@@ -47,8 +47,18 @@
 ! global mass matrix
   double precision, dimension(NGLOB) :: mass_global
 
-! temperature and temperature time derivative
+! local stiffness matrix
+  double precision, dimension(NGLL, NGLL) :: stiffness_local
+  double precision stiffness_temp
+
+! displacement and displacement time derivative
   double precision, dimension(NGLOB) :: displ,veloc,accel
+
+! global rhs matrix
+  double precision, dimension(NGLOB) :: rhs_global
+
+! local rhs matrix
+  double precision rhs_local
 
 ! local to global numbering
   integer, dimension(NGLL,NSPEC) :: ibool
@@ -60,7 +70,7 @@
 ! end gradients
   double precision grad_1,grad_NGLOB
 
-! end temperatures
+! end displacements
   double precision displ_1,displ_NGLOB
 
 ! movie
@@ -128,11 +138,28 @@
 
 ! set up the initial and boundary conditions
 !------------------------------------------------------------------------------
-! put your codes here
+  do ispec = 1,NSPEC
+    do i = 1,NGLL
+      iglob = ibool(i,ispec)
+      displ(iglob) = exp(-(x(iglob) - 50)**2 * 0.1)
+      veloc(iglob) = 0
+      accel(iglob) = 0
+    end do
+  end do
+
+  displ_1 = 0
+  displ_NGLOB = 0
+
+  write(moviefile,'(a,i5.5)')'snapshot',0
+  open(unit=10,file=moviefile,status='unknown')
+  do iglob = 1,NGLOB
+    write(10,*) sngl(x(iglob)),sngl(displ(iglob))
+  enddo
+  close(10)
 !------------------------------------------------------------------------------
 
 ! initialize
-!  displ(:) = 
+!  displ(:) = exp[−(x − 50)^2 ∗ 0.1]
 !  veloc(:) = 
 !  accel(:) = 
 
@@ -140,26 +167,66 @@
 
 ! "predictor" displacement, velocity, initialize acceleration
 !------------------------------------------------------------------------------
-! put your codes here
+    displ(:) = displ(:) + deltat*veloc(:) + deltatsquareover2*accel(:)
+    veloc(:) = veloc(:) + deltatover2*accel(:)
+    rhs_global(:) = 0
+    if (FIXED_BC) then
+      displ(1) = displ_1
+      displ(NGLOB) = displ_NGLOB
+    endif
 !------------------------------------------------------------------------------
+    do ispec = 1,NSPEC
 
+      ! calculate the local stiffness matrix 'stiffness_local'
+      do i = 1,NGLL
+        do j = 1,NGLL
+          stiffness_temp = 0.0
+          do gamma = 1,NGLL
+            stiffness_temp = stiffness_temp + wgll(gamma)*shear(gamma,ispec)/jacobian(gamma,ispec)*hprime(i,gamma)*hprime(j,gamma)
+          enddo
+          stiffness_local(i,j) = stiffness_temp
+        enddo
+      enddo
+
+      ! GLL point loop
+      do i = 1,NGLL
+        iglob = ibool(i,ispec)
+        rhs_local = 0.0
+        do j = 1,NGLL
+          jglob = ibool(j,ispec)
+          rhs_local = rhs_local - stiffness_local(i,j)*displ(jglob)
+        enddo
+
+        ! assembly
+        rhs_global(iglob) = rhs_global(iglob) + rhs_local
+      enddo
+    enddo
 ! boundary conditions
 !------------------------------------------------------------------------------
-! put your codes here
+    if (FIXED_BC) then
+      do j = 1,NGLL
+        jglob = ibool(j,1)
+        rhs_global(1) = rhs_global(1) - shear(1,1)*displ(jglob)*hprime(j,i)/jacobian(j,1)
+      enddo
+      do j = 1,NGLL
+        jglob = ibool(j,NSPEC)
+        rhs_global(NGLOB) = rhs_global(NGLOB) - shear(NGLL,NSPEC)*displ(jglob)*hprime(j,i)/jacobian(j,NSPEC)
+      enddo
+    endif
 !------------------------------------------------------------------------------
 
 ! solver
 !------------------------------------------------------------------------------
-! put your codes here
+    accel(:) = rhs_global / mass_global
 !------------------------------------------------------------------------------
 
 ! "corrector" acceleration, velocity, displacement
 !------------------------------------------------------------------------------
-! put your codes here
+    veloc(:) = veloc(:) + deltatover2*accel(:)
 !------------------------------------------------------------------------------
 
 ! write out snapshots
-    if(mod(itime-1,25) == 0) then
+    if(mod(itime,20) == 0) then
       write(moviefile,'(a,i5.5)')'snapshot',itime
       open(unit=10,file=moviefile,status='unknown')
       do iglob = 1,NGLOB
